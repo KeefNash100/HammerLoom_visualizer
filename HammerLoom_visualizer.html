@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HammerLoom Engine Field Visualizer</title>
+    <style>
+        :root {
+            --bg-color: #080c10;
+            --text-color: #e2e8f0;
+            --accent-green: #10b981;
+            --accent-orange: #f97316;
+            --accent-blue: #3b82f6;
+            --border-color: #1e293b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        header {
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+            margin-bottom: 15px;
+            border-bottom: 2px double var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        header h1 {
+            font-size: 1.4rem;
+            color: var(--accent-green);
+            text-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+        }
+
+        header p {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-top: 5px;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            aspect-ratio: 1;
+            background: #030712;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .controls {
+            width: 100%;
+            max-width: 600px;
+            background: #0f172a;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .telemetry-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .telemetry-item {
+            background: #020617;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        .telemetry-label {
+            font-size: 0.7rem;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+
+        .telemetry-value {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-top: 2px;
+        }
+
+        .sliders {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: var(--accent-green);
+            background: #1e293b;
+            height: 6px;
+            border-radius: 3px;
+            appearance: none;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        button {
+            flex: 1;
+            background: #1e293b;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        button:active {
+            background: var(--accent-blue);
+            transform: scale(0.98);
+        }
+
+        .active-layer-1 { border-left-color: var(--accent-orange); }
+        .active-layer-3 { border-left-color: var(--accent-green); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>HAMMERLOOM VISUALIZER v1.1</h1>
+        <p>Interactive Wave Topology Mesh • Tap Field to Distort Vector Dynamics</p>
+    </header>
+
+    <div id="canvas-container">
+        <canvas id="fieldCanvas"></canvas>
+    </div>
+
+    <div class="controls">
+        <div class="telemetry-grid">
+            <div class="telemetry-item active-layer-3">
+                <div class="telemetry-label">Global Coherence</div>
+                <div class="telemetry-value" id="coherence-val">99.62%</div>
+            </div>
+            <div class="telemetry-item active-layer-1">
+                <div class="telemetry-label">Entropy Floor</div>
+                <div class="telemetry-value" id="entropy-val">0.38%</div>
+            </div>
+        </div>
+
+        <div class="sliders">
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Mitochondrial Drive (Forge Frequency)</span>
+                    <span id="freq-display">3.5Hz</span>
+                </div>
+                <input type="range" id="freq-slider" min="1" max="10" step="0.1" value="3.5">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Boundary Layer Insulation Strength</span>
+                    <span id="shield-display">95%</span>
+                </div>
+                <input type="range" id="shield-slider" min="50" max="100" step="1" value="95">
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button id="mode-btn">Sector Phase: HIVE MESH</button>
+            <button id="reset-btn">Reset Grid Equilibrium</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('fieldCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Match physical resolution to display size
+        function resizeCanvas() {
+            const size = canvas.clientWidth;
+            canvas.width = size;
+            canvas.height = size;
+        }
+        resizeCanvas();
+
+        // System Constants & State Vars
+        let freq = 3.5;
+        let insulation = 0.95;
+        let phaseMode = 0; // 0: Hive Mesh, 1: Repulsor, 2: Forge
+        const modes = ['HIVE MESH', 'REPULSOR VECTOR', 'THE FORGE'];
+        
+        let time = 0;
+        let pointer = { x: null, y: null, active: false, pulse: 0 };
+
+        // Grid Configuration
+        const rows = 24;
+        const cols = 24;
+
+        // UI Listeners
+        document.getElementById('freq-slider').addEventListener('input', (e) => {
+            freq = parseFloat(e.target.value);
+            document.getElementById('freq-display').innerText = freq.toFixed(1) + 'Hz';
+            updateMetrics();
+        });
+
+        document.getElementById('shield-slider').addEventListener('input', (e) => {
+            insulation = parseInt(e.target.value) / 100;
+            document.getElementById('shield-display').innerText = (insulation * 100).toFixed(0) + '%';
+            updateMetrics();
+        });
+
+        document.getElementById('mode-btn').addEventListener('click', () => {
+            phaseMode = (phaseMode + 1) % modes.length;
+            document.getElementById('mode-btn').innerText = 'Sector Phase: ' + modes[phaseMode];
+        });
+
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            pointer.active = false;
+            pointer.x = null;
+            pointer.y = null;
+            freq = 3.5;
+            insulation = 0.95;
+            document.getElementById('freq-slider').value = 3.5;
+            document.getElementById('shield-slider').value = 95;
+            document.getElementById('freq-display').innerText = '3.5Hz';
+            document.getElementById('shield-display').innerText = '95%';
+            updateMetrics();
+        });
+
+        function updateMetrics() {
+            // Organic telemetry updates tied to slider positions
+            let baseCoherence = 90 + (insulation * 10);
+            let variance = Math.sin(time * 0.05) * 0.15;
+            let finalCoherence = Math.min(99.99, baseCoherence - (freq * 0.1) + variance);
+            
+            document.getElementById('coherence-val').innerText = finalCoherence.toFixed(2) + '%';
+            document.getElementById('entropy-val').innerText = (100 - finalCoherence).toFixed(2) + '%';
+        }
+
+        // Pointer Tracking Support for Mobile Touch + Desktop Mouse
+        function setPointer(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            pointer.x = clientX - rect.left;
+            pointer.y = clientY - rect.top;
+            pointer.active = true;
+        }
+
+        canvas.addEventListener('mousemove', setPointer);
+        canvas.addEventListener('touchstart', (e) => { setPointer(e); e.preventDefault(); });
+        canvas.addEventListener('touchmove', (e) => { setPointer(e); e.preventDefault(); });
+        canvas.addEventListener('mouseleave', () => pointer.active = false);
+        canvas.addEventListener('touchend', () => pointer.active = false);
+
+        // Core Render Loop
+        function draw() {
+            ctx.fillStyle = '#030712';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            time += 0.04 * freq;
+            if (pointer.active) pointer.pulse += 0.1;
+
+            const cellW = canvas.width / cols;
+            const cellH = canvas.height / rows;
+
+            // Generate field grids dynamically
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const x = c * cellW + cellW / 2;
+                    const y = r * cellH + cellH / 2;
+
+                    // Base biological/wave calculations
+                    let distToCenter = Math.sqrt(Math.pow(x - canvas.width/2, 2) + Math.pow(y - canvas.height/2, 2));
+                    let wave = Math.sin((distToCenter * 0.05) - time);
+                    
+                    let dx = 0;
+                    let dy = 0;
+
+                    // Apply touch interference vectors
+                    if (pointer.active) {
+                        let distToPointer = Math.sqrt(Math.pow(x - pointer.x, 2) + Math.pow(y - pointer.y, 2));
+                        if (distToPointer < 120) {
+                            let force = (120 - distToPointer) / 120;
+                            let angle = Math.atan2(y - pointer.y, x - pointer.x);
+                            
+                            // Deflection loop distortion logic
+                            dx = Math.cos(angle) * force * 15 * Math.sin(pointer.pulse);
+                            dy = Math.sin(angle) * force * 15 * Math.sin(pointer.pulse);
+                        }
+                    }
+
+                    // Render geometry tailored to chosen sector archetype
+                    ctx.save();
+                    ctx.translate(x + dx, y + dy);
+
+                    if (phaseMode === 0) {
+                        // Sector 3: Hive Mesh - Dense synchronized tracking system
+                        let alpha = (wave + 1) / 2 * insulation;
+                        ctx.fillStyle = `rgba(16, 185, 129, ${alpha * 0.7 + 0.1})`;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, cellW * 0.2, 0, Math.PI * 2);
+                        ctx.fill();
+                    } 
+                    else if (phaseMode === 1) {
+                        // Sector 2: Repulsor Suit - Kinetic vector lines
+                        let angle = (wave * Math.PI * 0.25);
+                        ctx.strokeStyle = `rgba(59, 130, 246, ${insulation * 0.6})`;
+                        ctx.lineWidth = 1.5;
+                        ctx.beginPath();
+                        ctx.moveTo(-cellW * 0.3 * Math.cos(angle), -cellH * 0.3 * Math.sin(angle));
+                        ctx.lineTo(cellW * 0.3 * Math.cos(angle), cellH * 0.3 * Math.sin(angle));
+                        ctx.stroke();
+                    } 
+                    else {
+                        // Sector 1: The Forge - Concentrated, heavy structural components
+                        let sizeFactor = (wave + 1) / 2 * cellW * 0.5;
+                        ctx.strokeStyle = `rgba(249, 115, 22, ${insulation * 0.8})`;
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(-sizeFactor/2, -sizeFactor/2, sizeFactor, sizeFactor);
+                    }
+
+                    ctx.restore();
+                }
+            }
+
+            // Draw insulation boundary rings visually matching 1000007498.jpg
+            if (pointer.active) {
+                ctx.strokeStyle = 'rgba(16, 185, 129, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(pointer.x, pointer.y, 120, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            if (Math.random() < 0.05) updateMetrics();
+
+            requestAnimationFrame(draw);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        draw();
+    </script>
+</body>
+</html>
