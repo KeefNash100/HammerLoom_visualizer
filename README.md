@@ -1,2 +1,2 @@
 # HammerLoom_visualizer
-Mathematical engine 
+Mathematical engine
